@@ -13,18 +13,38 @@ mic = machine.ADC(0)
 # 閾値 マイクの出力電圧がこの値を超えるとノックと判断します
 # Vddを3.3V (36番ピン)に接続＆ゲインが40dBの場合1.5としました
 # 環境に合わせて調整してください
-threshold = 1.5
+threshold = 1.65
 
-print('start')
+# インターバル（ミリ秒）
+sleep_ms = 10
 
-while (True):
-    #time.sleep_ms(30)
-    volt_raw = mic.read_u16()
-    volt = volt_raw * unit
-    volt_abs = abs(volt)
-    #print(volt_abs)
-    if volt_abs > threshold:
-        print('detected: {0}'.format(volt_abs))
+# volt: 検出した電圧値
+# threshold: しきい値
+def is_detect_sound(volt, threshold):
+    return volt > threshold
+
+# 前回通知したタイムスタンプ
+last_notified_time = -1
+
+# 通知間隔（秒数）
+notify_interval = 5
+
+# 検出した時の通知処理
+def notify(now, volt):
+    global led, last_notified_time
+    if (last_notified_time < 0 or (now - last_notified_time) > notify_interval):
+        print('notify: now={0}, volt={1}, last_notified_time={2}, notify_interval={3}'.format(now, volt, last_notified_time, notify_interval))
+        last_notified_time = now
         led.on()
+        
+while (True):
+    time.sleep_ms(sleep_ms)
+    volt_raw = mic.read_u16()
+    volt = abs(volt_raw * unit)
+    #print(volt)
+    
+    # detect sound
+    if is_detect_sound(volt, threshold):
+        notify(time.time(), volt)
     else:
         led.off()
