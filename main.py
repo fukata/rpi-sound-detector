@@ -23,6 +23,26 @@ sleep_ms = 10
 def is_detect_sound(volt, threshold):
     return volt > threshold
 
+# 音を検知するかどうか
+is_detect_sound = False
+
+# 最後に音を検知することになった時間
+last_detect_sound_activated_time = -1
+
+# 音を検知しない間のスリープ秒数
+inactive_sleep_seconds = 60 * 30 # 30分
+
+# 音の検知を行う時間帯かどうかを判定する
+def detect_sound_by_time(now):
+    target_time = time.gmtime(now)
+    hour = target_time[3]
+
+    # UTC 0000-1200 (JST 0900-2100)
+    if (hour >= 0 and hour <= 12):
+        return True
+
+    return False
+
 # 前回通知したタイムスタンプ
 last_notified_time = -1
 
@@ -38,6 +58,14 @@ def notify(now, volt):
         led.on()
         
 while (True):
+    now = time.time()
+    if (last_detect_sound_activated_time < 0 or (now - last_detect_sound_activated_time > inactive_sleep)):
+        is_detect_sound = detect_sound_by_time(now)
+
+    if (not is_detect_sound):
+        time.sleep(inactive_sleep_seconds)
+        continue
+
     time.sleep_ms(sleep_ms)
     volt_raw = mic.read_u16()
     volt = abs(volt_raw * unit)
